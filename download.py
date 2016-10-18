@@ -1,56 +1,102 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import feedparser, requests, re, time
-from datetime import datetime
+import feedparser, requests, re, time, pytz
+from datetime import datetime, timedelta
+from dateutil import parser
 from bs4 import BeautifulSoup
 
+import logging
+
+logging.basicConfig(filename='download.log',level=logging.INFO)
 import cartoon
 
 my_cartoons = []
+my_links = []
 
+logging.info('======= Starting sesion....')
+
+#
 # Download from eldiario.es
+#
+
 feed = feedparser.parse('http://www.eldiario.es/rss/section/20038/')
 c = feed.entries[0]
-bergara = cartoon.Cartoon(c.title, c.links[1].href, c.links[0].href, 'http://www.eldiario.es', 'Bernardo Vergara', c.published)
-my_cartoons.append(bergara)
+published_at = parser.parse(c.published)
+logging.info(published_at.strftime('%m/%d/%Y') + " " + c.title + " " + c.links[1].href + " " + c.links[0].href + " http://www.eldiario.es Bernardo Vergara ")
+
+if (published_at.date() == datetime.today().date()):
+    bergara = cartoon.Cartoon(c.title, c.links[1].href, c.links[0].href, 'http://www.eldiario.es', 'Bernardo Vergara', published_at)
+    my_cartoons.append(bergara)
+    logging.info('ADDED ' + c.title)
 
 feed = feedparser.parse('http://www.eldiario.es/rss/section/20039/')
 c = feed.entries[0]
-manel = cartoon.Cartoon(c.title, c.links[1].href, c.links[0].href, 'http://www.eldiario.es','Manel Fontedevila', c.published)
-my_cartoons.append(manel)
+published_at = parser.parse(c.published)
+logging.info(published_at.strftime('%m/%d/%Y') + " " + c.title + " " + c.links[1].href + " " + c.links[0].href + " http://www.eldiario.es Bernardo Vergara ")
 
+if (published_at.date() == datetime.today().date()):
+    manel = cartoon.Cartoon(c.title, c.links[1].href, c.links[0].href, 'http://www.eldiario.es','Manel Fontedevila', published_at)
+    my_cartoons.append(manel)
+    logging.info('ADDED ' + c.title)
+#
 # Download from ctxt.es 
+#
+
 r = requests.get('http://ctxt.es/es/?tpl=22&tpid=299')
 page_text = r.text.encode('utf-8')
 soup = BeautifulSoup(page_text,'html.parser')
-
 results = soup.findAll("a", {"title" : re.compile('Leer el.*')})
-results = list(set(results))
 
 for link in results:
-    r = requests.get(link.get('href'))
-    print link.get('href')
-    #r = requests.get('http://ctxt.es/es/20160928/Multimedia/8741/')
+    my_links.append(link.get('href'))
+
+my_links = list(set(my_links))
+
+for link in my_links:
+    r = requests.get(link)
+    #r = requests.get('http://ctxt.es/es/20161005/Multimedia/8851/JR-Mora-prensa.htm')
     page_text = r.text.encode('utf-8')
     soup = BeautifulSoup(page_text,'html.parser')
     titles = soup.find_all('h1')
-    regex = ur'^El (.*) de hoy: (.*) \((.*)\)$'
+    regex = ur'^(El|La) (.*) de hoy: (.*) \((.*)\)$'
     result = re.match(regex, titles[-1].getText())
 
-    published_at = datetime.strptime(result.group(3), '%d/%m/%Y')
-    today = time.strftime('%d/%m/%Y')
-    print published_at
-    print today
+    published_at = pytz.timezone('Europe/Madrid').localize(datetime.strptime(result.group(4), '%d/%m/%Y'))
+    logging.info(published_at.strftime('%m/%d/%Y') + " " + result.group(3) + " " + c.links[1].href + " " + link + " http://www.eldiario.es " + result.group(2))
 
-    if (today == published_at):
-    	ctxt = cartoon.Cartoon(result.group(2), c.links[1].href, link.get('href'), 'http://ctxt.es',result.group(1), result.group(3))
-    	print ctxt
+    if (published_at.date() == datetime.today().date()):
+    	ctxt = cartoon.Cartoon(result.group(3), c.links[1].href, link, 'http://ctxt.es',result.group(2), published_at)
     	my_cartoons.append(ctxt)
+        logging.info('ADDED ' + result.group(3))
 
-    print "\n----------------------"
+print 'Cartoons downloaded {0}'.format(len(my_cartoons)) 
 
-n_cartoons = len(my_cartoons)
-print 'Cartoons downloaded {0}'.format(n_cartoons) 
+#
+# Download from republica.com
+#
 
-# Links
-#http://www.republica.com/vinetas/
+r = requests.get('http://www.republica.com/vinetas/')
+page_text = r.text.encode('utf-8')
+soup = BeautifulSoup(page_text,'html.parser')
+results = soup.findAll("a", {"title" : re.compile('La vi.eta: .*')})
+
+title = results[0].get('title')
+regex = ur'La vi.eta: (.*)'
+result = re.search(regex, title)
+title = result.group(1)
+url = results[0].get('href')
+regex = ur'url\((.*)\)'
+result = re.search(regex, str(results[0]))
+image = result.group(1)
+regex = ur'(\d\d\d\d/\d\d/\d\d)/'
+result = re.search(regex, url)
+published_at = pytz.timezone('Europe/Madrid').localize(datetime.strptime(result.group(1), '%Y/%m/%d'))
+publisher = 'http://www.republica.com/vinetas'
+author = 'Ferran Martín'
+
+logging.info(published_at.strftime('%m/%d/%Y') + " " + title.encode('utf-8') + " " + image + " " + url.encode('utf-8') + "  " + publisher + " " + author)
+
+if (published_at.date() == datetime.today().date()):
+    republica = cartoon.Cartoon(title, image, url, 'http://www.republica.com/vinetas','Ferran Martín', published_at)
+    my_cartoons.append(republica)
+    logging.info('ADDED ' + title)

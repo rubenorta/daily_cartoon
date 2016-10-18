@@ -9,9 +9,12 @@ sudo pip install pydub
 sudo apt-get install -y aubio-tools libaubio-dev libaubio-doc
 sudo pip install telepot
 sudo pip install feedparser
+sudo pip install pytz
+
 #sudo pip install requests
 #sudo pip install complexjson
 sudo pip install beautifulsoup4
+sudo pip install python-dateutil
 sudo apt-get install -y libav-tools
 sudo apt-get install -y git
 

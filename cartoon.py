@@ -10,7 +10,7 @@ class Cartoon:
 
     def __str__(self):
         s = "De " + self.author + "@" + self.publisher + "\n"
-        s = s + self.title + " / " + self.date  + "\n"
+        #s = s + self.title.encode('utf-8') + " / " + self.date.strftime('%m/%d/%Y')  + "\n"
         s = s + " URL " + self.url + "\n SRC " + self.image  + "\n"
         return s
 
